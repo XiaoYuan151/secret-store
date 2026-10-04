@@ -60,7 +60,7 @@ function renderAuth() {
     ${setup ? '<label class="formlabel" for="confirm">Confirm password</label><input class="textinput" id="confirm" type="password" autocomplete="new-password" required placeholder="Enter it again">' : ''}
     ${setup && state.status?.biometricSupported ? '<label class="auth-choice"><input type="checkbox" id="setup-biometric"> Enable Touch ID after setup</label>' : ''}
     <div id="auth-error" class="error" role="alert"></div><button class="primary" type="submit">${setup ? 'Create vault' : 'Unlock vault'}</button></form>
-    ${state.status?.biometricAvailable ? '<div class="auth-foot"><button id="biometric">Unlock with Touch ID</button></div>' : `<div class="auth-foot">Private by design · ${window.vault ? 'Encrypted on this device' : 'Encrypted in PostgreSQL'}</div>`}</div></div>`;
+    ${state.status?.biometricAvailable ? '<div class="auth-foot"><button id="biometric">Unlock with Touch ID</button></div>' : `<div class="auth-foot">Private by design · ${window.vault ? 'Encrypted on this device' : 'Encrypted in the database'}</div>`}</div></div>`;
   document.getElementById('auth-form').addEventListener('submit', async event => {
     event.preventDefault();
     const password = document.getElementById('password').value;

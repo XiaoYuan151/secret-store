@@ -1,6 +1,6 @@
 # Secret Store
 
-A quiet, local-first vault for API keys. The desktop app uses SQLite. The web app uses PostgreSQL. In both, key records are AES-256-GCM encrypted before they are written to the database; the database contains opaque IDs and encrypted payloads. The password-derived key is held only while the vault is unlocked.
+A quiet, local-first vault for API keys. The desktop app uses SQLite. The web app uses PostgreSQL or Cloudflare D1. In both, key records are AES-256-GCM encrypted before they are written to the database; the database contains opaque IDs and encrypted payloads. The password-derived key is held only while the vault is unlocked.
 
 ## Desktop
 
@@ -15,14 +15,43 @@ On first launch, create a password of at least 12 characters. There is no passwo
 
 ## Web
 
-Requires a running PostgreSQL database and Node.js 22+.
+The web app is a **single-vault** service: the first visitor creates its password. Deploy behind HTTPS and access controls so only intended users can reach setup and unlock. Back up the database and remember the password; there is no recovery path. Key payloads are AES-256-GCM encrypted. Active session keys are stored encrypted in the database so sessions work across instances. Sessions expire after 15 minutes of inactivity; locking removes the session record. Keep `SESSION_SECRET` stable and private, since changing it invalidates all active sessions. Generate one with `openssl rand -hex 32`.
+
+### VPS + PostgreSQL
+
+Requires Node.js 22+ and PostgreSQL. Tables are created on startup.
 
 ```sh
 npm install
-DATABASE_URL='postgres://user:password@localhost:5432/secret_store' npm run web
+SESSION_SECRET='<64-character-random-hex>' DATABASE_URL='postgres://user:password@localhost:5432/secret_store' npm run web
 ```
 
-Open <http://127.0.0.1:3000>. Tables are created automatically. This is a **single-vault** service: the first visitor sets the password. Keep it bound to localhost unless you put it behind HTTPS with access controls. For an HTTPS deployment set `HOST`, `PUBLIC_ORIGIN` (for example `https://vault.example.com`), and `COOKIE_SECURE=1`. PostgreSQL should use TLS for a remote database connection. The web service keeps unlocked keys in process memory for active sessions, which expire after 15 minutes of inactivity.
+The server listens on `127.0.0.1:3000` by default. Place an HTTPS reverse proxy in front, then set `PUBLIC_ORIGIN=https://vault.example.com` and `COOKIE_SECURE=1`. Set `HOST` and `PORT` if necessary. Use TLS for remote PostgreSQL connections. Point the reverse proxy at the local listener and allow only the intended users to access it.
+
+### Vercel + Supabase
+
+Create a Supabase PostgreSQL project. In its **Connect** panel, copy the **transaction pooler** connection string (port 6543) for serverless use. Import this repository as a Vercel project with **Framework Preset: Other** and the repository root as the root directory. The `api/` functions and generated `public/` assets deploy together; `vercel.json` runs the asset build and limits the static output to `public/`. Configure environment variables in Vercel:
+
+- `DATABASE_URL`: the Supabase transaction pooler URL, with the password URL encoded and TLS required (`sslmode=require`).
+- `SESSION_SECRET`: the random value generated above.
+- `PUBLIC_ORIGIN`: the exact HTTPS Vercel or custom domain origin, with no trailing slash.
+
+Deploy. The functions create the PostgreSQL tables when first invoked. For production, use a custom domain and restrict access before sharing the URL. Keep `SESSION_SECRET` and `DATABASE_URL` server side; never expose them with a `NEXT_PUBLIC_` prefix.
+
+### Cloudflare Workers + D1
+
+Use a Workers Paid plan for the password setup and unlock CPU work; the [Free plan’s 10 ms CPU limit](https://developers.cloudflare.com/workers/platform/limits/) is too small for the existing scrypt parameters. Create a D1 database named `secret-store` with Wrangler. Replace `REPLACE_WITH_D1_DATABASE_ID` in `wrangler.toml` with its database ID. Apply `migrations/0001_init.sql` before deploying:
+
+```sh
+npx wrangler d1 create secret-store
+npx wrangler d1 migrations apply secret-store --remote
+npx wrangler secret put SESSION_SECRET
+npx wrangler secret put PUBLIC_ORIGIN
+npm run web:assets
+npx wrangler deploy
+```
+
+Set `PUBLIC_ORIGIN` to the exact HTTPS Workers or custom domain origin. For local D1 testing, run `npx wrangler d1 migrations apply secret-store --local`, then `npm run web:assets` and `npx wrangler dev`. The Worker uses the `DB` D1 binding and serves the generated `public/` directory. Rebuild assets after UI changes. Configure Cloudflare Access or equivalent access controls before sharing the URL.
 
 ## Features
 
@@ -38,7 +67,7 @@ Open <http://127.0.0.1:3000>. Tables are created automatically. This is a **sing
 
 ## Security boundaries
 
-The application does not recover a lost password. Local database backups must include the password to remain useful. Encryption covers key records, while SQLite/PostgreSQL table names and random row IDs remain visible. The web server should not be exposed directly to the public Internet. The product does not currently include WebAuthn passkeys or system notifications; expiration reminders appear in the app. Touch ID support is macOS desktop only.
+The application does not recover a lost password. Local database backups must include the password to remain useful. Encryption covers key records, while SQLite/PostgreSQL/D1 table names and random row IDs remain visible. The web server should not be exposed directly to the public Internet. The product does not currently include WebAuthn passkeys or system notifications; expiration reminders appear in the app. Touch ID support is macOS desktop only.
 
 ## Icons
 
