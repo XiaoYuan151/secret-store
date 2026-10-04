@@ -22,7 +22,7 @@ function database() {
   fs.chmodSync(app.getPath('userData'), 0o700);
   db = new DatabaseSync(path.join(app.getPath('userData'), 'vault.sqlite'));
   fs.chmodSync(path.join(app.getPath('userData'), 'vault.sqlite'), 0o600);
-  db.exec('PRAGMA journal_mode=WAL; PRAGMA secure_delete=ON; CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS entries (id TEXT PRIMARY KEY, payload TEXT NOT NULL);');
+  db.exec('PRAGMA journal_mode=WAL; PRAGMA secure_delete=ON; CREATE TABLE IF NOT EXISTS settings (name TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS entries (id TEXT PRIMARY KEY, payload TEXT NOT NULL); CREATE TABLE IF NOT EXISTS platforms (id TEXT PRIMARY KEY, payload TEXT NOT NULL);');
   return db;
 }
 function setting(name) { return database().prepare('SELECT value FROM settings WHERE name=?').get(name)?.value; }
@@ -62,6 +62,8 @@ function validateEntry(input) {
   return entry;
 }
 function entries() { locked(); return database().prepare('SELECT payload FROM entries').all().map(row => decrypt(row.payload)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }
+function customPlatforms() { locked(); return database().prepare('SELECT payload FROM platforms').all().map(row => decrypt(row.payload).name).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })); }
+function validatePlatformName(value) { const name = String(value || '').trim(); if (!name || name.length > 80) throw new Error('Platform name must be 1–80 characters'); return name; }
 function status() { const biometricSupported = process.platform === 'darwin' && safeStorage.isEncryptionAvailable() && systemPreferences.canPromptTouchID(); return { configured: !!setting('salt'), unlocked: !!vaultKey, platform: process.platform, biometricSupported, biometricAvailable: biometricSupported && fs.existsSync(wrapPath()) }; }
 function lock() { if (vaultKey) vaultKey.fill(0); vaultKey = null; if (lastCopied && clipboard.readText() === lastCopied) clipboard.clear(); lastCopied = null; clearTimeout(clearClipboardTimer); BrowserWindow.getAllWindows().forEach(w => w.webContents.send('vault-locked')); }
 function createWindow() {
@@ -102,6 +104,15 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('lock', () => { lock(); return status(); });
   ipcMain.handle('list', () => entries());
+  ipcMain.handle('list-platforms', () => customPlatforms());
+  ipcMain.handle('add-platform', (_, value) => {
+    locked();
+    const name = validatePlatformName(value);
+    const existing = customPlatforms().find(x => x.toLocaleLowerCase() === name.toLocaleLowerCase());
+    if (existing) return existing;
+    database().prepare('INSERT INTO platforms(id,payload) VALUES(?,?)').run(crypto.randomUUID(), encrypt({ name }));
+    return name;
+  });
   ipcMain.handle('save', (_, input) => {
     locked(); const entry = validateEntry(input);
     database().prepare('INSERT INTO entries(id,payload) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').run(entry.id, encrypt(entry));

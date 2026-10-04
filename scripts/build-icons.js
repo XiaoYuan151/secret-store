@@ -30,9 +30,11 @@ const icons = {
   moon: [solid, 'faMoon'],
   sun: [solid, 'faSun'],
   fingerprint: [solid, 'faFingerprint'],
+  gear: [solid, 'faGear'],
   plus: [solid, 'faPlus'],
   copy: [solid, 'faCopy'],
-  eye: [solid, 'faEye']
+  eye: [solid, 'faEye'],
+  'eye-slash': [solid, 'faEyeSlash']
 };
 const output = path.join(__dirname, '..', 'assets', 'fontawesome');
 fs.mkdirSync(output, { recursive: true });

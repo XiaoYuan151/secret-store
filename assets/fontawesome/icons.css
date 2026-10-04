@@ -25,6 +25,8 @@
 .fa-moon{--fa-mask:url("./moon.svg")}
 .fa-sun{--fa-mask:url("./sun.svg")}
 .fa-fingerprint{--fa-mask:url("./fingerprint.svg")}
+.fa-gear{--fa-mask:url("./gear.svg")}
 .fa-plus{--fa-mask:url("./plus.svg")}
 .fa-copy{--fa-mask:url("./copy.svg")}
 .fa-eye{--fa-mask:url("./eye.svg")}
+.fa-eye-slash{--fa-mask:url("./eye-slash.svg")}

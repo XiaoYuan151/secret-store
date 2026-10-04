@@ -42,6 +42,8 @@ function decrypt(bytes, key) {
 }
 async function setting(name) { return (await pool.query('SELECT value FROM vault_settings WHERE name=$1', [name])).rows[0]?.value; }
 async function list(key) { return (await pool.query('SELECT payload FROM vault_entries')).rows.map(row => decrypt(row.payload, key)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }
+async function listPlatforms(key) { return (await pool.query('SELECT payload FROM vault_platforms')).rows.map(row => decrypt(row.payload, key).name).sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })); }
+function validatePlatformName(value) { const name = String(value || '').trim(); if (!name || name.length > 80) fail('Platform name must be 1–80 characters'); return name; }
 function validateEntry(input) {
   if (!input || typeof input !== 'object') fail('Invalid entry');
   const entry = {
@@ -82,7 +84,7 @@ async function route(req, res) {
     return;
   }
   const action = pathname.slice(5);
-  if (req.method !== 'POST' && !['status', 'list'].includes(action)) fail('Method not allowed', 405);
+  if (req.method !== 'POST' && !['status', 'list', 'platforms'].includes(action)) fail('Method not allowed', 405);
   if (req.method === 'POST') {
     if (req.headers['x-csrf'] !== '1') fail('Missing request protection', 403);
     const origin = req.headers.origin;
@@ -131,6 +133,14 @@ async function route(req, res) {
     return send(res, 200, { configured: true, unlocked: false, platform: 'web', biometricSupported: false, biometricAvailable: false }, { 'Set-Cookie': cookie('', 0) });
   }
   if (action === 'list' && req.method === 'GET') return send(res, 200, await list(active.key));
+  if (action === 'platforms' && req.method === 'GET') return send(res, 200, await listPlatforms(active.key));
+  if (action === 'add-platform') {
+    const name = validatePlatformName(data.name);
+    const existing = (await listPlatforms(active.key)).find(x => x.toLocaleLowerCase() === name.toLocaleLowerCase());
+    if (existing) return send(res, 200, existing);
+    await pool.query('INSERT INTO vault_platforms(id,payload) VALUES($1,$2)', [crypto.randomUUID(), encrypt({ name }, active.key)]);
+    return send(res, 200, name);
+  }
   if (action === 'save') {
     const entry = validateEntry(data);
     await pool.query('INSERT INTO vault_entries(id,payload) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET payload=EXCLUDED.payload', [entry.id, encrypt(entry, active.key)]);
@@ -146,6 +156,7 @@ async function route(req, res) {
 async function start() {
   await pool.query('CREATE TABLE IF NOT EXISTS vault_settings (name text PRIMARY KEY, value text NOT NULL)');
   await pool.query('CREATE TABLE IF NOT EXISTS vault_entries (id uuid PRIMARY KEY, payload bytea NOT NULL)');
+  await pool.query('CREATE TABLE IF NOT EXISTS vault_platforms (id uuid PRIMARY KEY, payload bytea NOT NULL)');
   const server = http.createServer((req, res) => route(req, res).catch(e => send(res, e.status || 500, { error: e.status ? e.message : 'Server error' })));
   server.listen(port, host, () => console.log(`Secret Store web listening on http://${host}:${port}`));
   setInterval(() => {

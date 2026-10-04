@@ -9,15 +9,57 @@
     "web": "node web-server.js",
     "icons": "node scripts/build-icons.js",
     "platform-icons": "node scripts/build-platform-icons.js",
+    "package": "electron-builder --publish never",
     "check": "node --check main.js && node --check preload.js && node --check app.js && node --check web-server.js && node --check tests-api.js",
     "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
     "@fortawesome/free-brands-svg-icons": "^7.3.1",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
-    "electron": "^44.5.1"
+    "electron": "^44.5.1",
+    "electron-builder": "26.15.3"
   },
   "dependencies": {
     "pg": "^8.23.1"
+  },
+  "build": {
+    "appId": "com.secretstore.app",
+    "productName": "Secret Store",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app.js",
+      "index.html",
+      "styles.css",
+      "theme.css",
+      "tests-api.js",
+      "assets/**/*"
+    ],
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "Utility",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
   }
 }
