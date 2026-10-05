@@ -12,7 +12,7 @@ let nextAttempt = 0;
 let clearClipboardTimer;
 let lastCopied;
 const wrapPath = () => path.join(app.getPath('userData'), 'biometric.key');
-function updateDockIcon() { const icon = nativeTheme.shouldUseDarkColors ? 'icon-dark.png' : 'icon.png'; app.dock?.setIcon(nativeImage.createFromPath(path.join(__dirname, 'assets', icon))); }
+function updateDockIcon() { app.dock?.setIcon(nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png'))); }
 function updateWindowBackgrounds() { BrowserWindow.getAllWindows().forEach(window => window.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#11161e' : '#f7f9fc')); }
 
 function database() {
@@ -68,7 +68,7 @@ function status() { const biometricSupported = process.platform === 'darwin' && 
 function lock() { if (vaultKey) vaultKey.fill(0); vaultKey = null; if (lastCopied && clipboard.readText() === lastCopied) clipboard.clear(); lastCopied = null; clearTimeout(clearClipboardTimer); BrowserWindow.getAllWindows().forEach(w => w.webContents.send('vault-locked')); }
 function createWindow() {
   const iconPath = process.platform === 'win32' ? 'assets/platform/windows/AppIcon.ico' : process.platform === 'linux' ? 'assets/platform/linux/hicolor/256x256/apps/secret-store.png' : 'assets/icon.png';
-  const window = new BrowserWindow({ width: 1380, height: 900, minWidth: 940, minHeight: 650, backgroundColor: nativeTheme.shouldUseDarkColors ? '#11161e' : '#f7f9fc', titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default', icon: path.join(__dirname, iconPath), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  const window = new BrowserWindow({ width: 960, height: 720, minWidth: 940, minHeight: 650, backgroundColor: nativeTheme.shouldUseDarkColors ? '#11161e' : '#f7f9fc', titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default', icon: path.join(__dirname, iconPath), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.loadFile(path.join(__dirname, 'index.html'));
   window.on('closed', () => { if (!BrowserWindow.getAllWindows().length) lock(); });
   window.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith('https://')) shell.openExternal(url); return { action: 'deny' }; });

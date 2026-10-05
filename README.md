@@ -75,10 +75,10 @@ Platform marks come from **Font Awesome Free**, bundled as small local SVGs with
 
 The app icon exports are under `assets/platform`:
 
-- **macOS:** `macos/AppIcon.icns` for Electron and separate square background/foreground SVG layers in `apple/` for Icon Composer. The Dock icon has transparent inset for the standard visual size and follows the active appearance.
+- **macOS:** `macos/AppIcon.icns` for Electron and separate square background/foreground SVG layers in `apple/` for Icon Composer. The Dock icon has transparent inset for the standard visual size and uses the dark blue artwork in every appearance.
 - **Windows:** a multi-resolution ICO plus 44 px and 150 px logo assets at 100%, 200%, and 400% scales.
 - **Linux:** PNG sizes and a scalable SVG in the freedesktop `hicolor` layout.
-- **iOS:** an `AppIcon.appiconset` with opaque, unmasked 1024 px light and dark icons. These are assets for a future iOS target; this repository does not contain an iOS app.
+- **iOS:** an `AppIcon.appiconset` with opaque, unmasked 1024 px icons for both appearances, using the same dark blue artwork. These are assets for a future iOS target; this repository does not contain an iOS app.
 
 The sources and exports preserve one key silhouette across platforms. Regenerate them with `npm run platform-icons` (requires ImageMagick). Apple’s current layered effects require importing the `apple/` SVG layers into Icon Composer for an Apple-platform build. References: [Apple app icons](https://developer.apple.com/design/human-interface-guidelines/app-icons), [Windows app icons](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-design), and the [freedesktop icon theme specification](https://specifications.freedesktop.org/icon-theme/0.8/).
 

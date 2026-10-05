@@ -2,7 +2,7 @@
 .detail .logo{font-size:28px}
 .sideicon{display:grid;place-items:center}
 .search .fa-icon{font-size:13px}
-.auth-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:38px}
+.auth-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px}
 .auth .brand{margin-bottom:0}
 .auth-top .theme-toggle{margin-right:-7px}
 body[data-platform="darwin"] .shell{grid-template-rows:48px minmax(0,1fr)}
@@ -65,6 +65,7 @@ body[data-platform="darwin"] .top .search{height:34px}
 :root[data-theme="dark"] .auth p,
 :root[data-theme="dark"] .auth-foot,
 :root[data-theme="dark"] .modal p{color:#99aabe}
+:root[data-theme="dark"] .copyright-name{color:#91bbff}
 :root[data-theme="dark"] .list-head h1,
 :root[data-theme="dark"] .detail-title,
 :root[data-theme="dark"] .entry-title,

@@ -60,7 +60,7 @@ function renderAuth() {
     ${setup ? '<label class="formlabel" for="confirm">Confirm password</label><input class="textinput" id="confirm" type="password" autocomplete="new-password" required placeholder="Enter it again">' : ''}
     ${setup && state.status?.biometricSupported ? '<label class="auth-choice"><input type="checkbox" id="setup-biometric"> Enable Touch ID after setup</label>' : ''}
     <div id="auth-error" class="error" role="alert"></div><button class="primary" type="submit">${setup ? 'Create vault' : 'Unlock vault'}</button></form>
-    ${state.status?.biometricAvailable ? '<div class="auth-foot"><button id="biometric">Unlock with Touch ID</button></div>' : `<div class="auth-foot">Private by design · ${window.vault ? 'Encrypted on this device' : 'Encrypted in the database'}</div>`}</div></div>`;
+    ${state.status?.biometricAvailable ? '<div class="auth-foot"><button id="biometric">Unlock with Touch ID</button></div>' : ''}</div></div>`;
   document.getElementById('auth-form').addEventListener('submit', async event => {
     event.preventDefault();
     const password = document.getElementById('password').value;
@@ -93,13 +93,13 @@ function sidebar() {
     ${Object.keys(platformGroups).sort(alphabetical).map(group => `<div class="side-caption">${esc(group.toUpperCase())}</div>${platformGroups[group].slice().sort(alphabetical).map(name => item(name, siteIcon(name), counts.get(name) || 0)).join('')}`).join('')}
     <div class="side-caption side-caption-action"><span>OTHER</span><button class="side-add" id="add-custom" type="button" title="Add a custom platform" aria-label="Add a custom platform">${fa('plus')}</button></div>${[...new Set([...state.customPlatforms, ...state.entries.map(x => x.platform).filter(x => !platforms.includes(x))])].sort(alphabetical).map(name => item(name, siteIcon(name), counts.get(name) || 0)).join('')}
     ${tags.length ? `<div class="side-caption">TAGS</div><div class="side-tags">${tags.map(tag => `<button class="tag-filter ${state.tag === tag ? 'active' : ''}" data-tag="${esc(tag)}"># ${esc(tag)}</button>`).join('')}</div>` : ''}
-    <div class="side-bottom"><div class="side-note">${window.vault ? 'Encrypted on this device.' : 'Encrypted before PostgreSQL storage.'} Clipboard clears after 30 seconds when permitted.</div></div></aside>`;
+    <div class="side-bottom"><div class="side-note"><div>Copyright © 2026</div><span class="copyright-name">XiaoYuan151</span><div>All rights reserved.</div></div></div></aside>`;
 }
 function listPane() {
   const entries = filtered();
   const heading = state.search ? 'Search results' : state.category;
   const suggestions = state.search ? allPlatformNames().filter(name => name.toLocaleLowerCase().includes(state.search.toLocaleLowerCase()) && !entries.some(entry => entry.platform === name)).slice(0, 5) : [];
-  return `<section class="list-pane"><div class="list-head"><div><p class="eyebrow">YOUR VAULT</p><h1>${esc(heading)}</h1><p class="subhead">${entries.length} key${entries.length === 1 ? '' : 's'}${state.tag ? ' · #' + esc(state.tag) : ''}</p></div>${state.search || state.category === 'Expiring soon' ? '' : '<button class="addbtn" id="add">+ New key</button>'}</div>
+  return `<section class="list-pane"><div class="list-head"><div><p class="eyebrow">YOUR VAULT</p><h1>${esc(heading)}</h1><p class="subhead">${entries.length} key${entries.length === 1 ? '' : 's'}${state.tag ? ' · #' + esc(state.tag) : ''}</p></div>${state.search || state.category === 'Expiring soon' ? '' : '<button class="addbtn" id="add">New</button>'}</div>
     <div class="sectionline">SAVED KEYS</div><div class="entry-list ${!entries.length && !suggestions.length ? 'entry-list-empty' : ''}">${entries.length ? entries.map(entry => `<button class="entry ${state.selected === entry.id ? 'active' : ''}" data-entry="${esc(entry.id)}">${icon(entry.platform)}<span class="entry-main"><span class="entry-title">${esc(entry.label)}</span><span class="entry-sub">${esc(entry.platform)} · ${esc(entry.email || entry.keyId || 'API key')}</span></span>${expiring(entry) ? '<span class="entry-expiry"></span>' : ''}<span class="entry-arrow">›</span></button>`).join('') : !suggestions.length ? `<div class="empty"><div class="empty-icon">${fa('key')}</div><h2>No keys here yet</h2><p>Add a key or try a different search.</p></div>` : ''}${suggestions.length ? `<div class="sectionline suggestion-caption">APPLICATIONS · QUICK ADD</div>${suggestions.map(name => `<button class="entry" data-new-platform="${esc(name)}">${icon(name)}<span class="entry-main"><span class="entry-title">${esc(name)}</span><span class="entry-sub">Add a new key</span></span><span class="entry-arrow">＋</span></button>`).join('')}` : ''}</div>
     </section>`;
 }
