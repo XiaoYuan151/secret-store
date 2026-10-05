@@ -30,3 +30,4 @@
 .entry-title,.entry-sub{display:block}.auth-choice{display:flex;align-items:center;gap:9px;margin-top:18px;color:#5c6b80;font-size:11px}.auth-choice input{accent-color:#386bd6}
 .suggestion-caption{padding:24px 12px 9px}
 @media(max-width:1100px){.shell{grid-template-columns:190px 300px minmax(350px,1fr)}.search{width:40vw}.detail{padding:35px}.sidebar{padding-left:10px}.detail-top{align-items:start}.detail-actions{flex-direction:column}}
+.click-ripple{position:fixed;z-index:30;overflow:hidden;pointer-events:none;contain:layout paint}.click-ripple-circle{position:absolute;border-radius:50%;background:rgba(0,0,0,.05);transform:translate(-50%,-50%) scale(0);animation:click-ripple-expand 520ms linear forwards;will-change:transform,opacity}@keyframes click-ripple-expand{0%{transform:translate(-50%,-50%) scale(0);opacity:1}65%{opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}@media(prefers-reduced-motion:reduce){.click-ripple{display:none}}

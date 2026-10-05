@@ -56,8 +56,8 @@ const api = window.vault || {
 function renderAuth() {
   const setup = !state.status?.configured;
   app.innerHTML = `<div class="auth"><div class="auth-card"><div class="auth-top">${brand()}${themeButton()}</div><h1>${setup ? 'Create your private vault' : 'Welcome back'}</h1><p>${setup ? 'Your keys are encrypted before they are stored. Choose a strong password to get started.' : 'Enter your password to unlock your keys.'}</p>
-    <form id="auth-form"><label class="formlabel" for="password">Vault password</label><input class="textinput" id="password" type="password" minlength="${setup ? 12 : 1}" autocomplete="${setup ? 'new-password' : 'current-password'}" required placeholder="${setup ? 'At least 12 characters' : 'Enter your password'}">
-    ${setup ? '<label class="formlabel" for="confirm">Confirm password</label><input class="textinput" id="confirm" type="password" autocomplete="new-password" required placeholder="Enter it again">' : ''}
+    <form id="auth-form"><label class="formlabel" for="password">Vault password</label><input class="textinput" id="password" type="password" minlength="${setup ? 12 : 1}" autocomplete="${setup ? 'new-password' : 'current-password'}" required>
+    ${setup ? '<label class="formlabel" for="confirm">Confirm password</label><input class="textinput" id="confirm" type="password" autocomplete="new-password" required>' : ''}
     ${setup && state.status?.biometricSupported ? '<label class="auth-choice"><input type="checkbox" id="setup-biometric"> Enable Touch ID after setup</label>' : ''}
     <div id="auth-error" class="error" role="alert"></div><button class="primary" type="submit">${setup ? 'Create vault' : 'Unlock vault'}</button></form>
     ${state.status?.biometricAvailable ? '<div class="auth-foot"><button id="biometric">Unlock with Touch ID</button></div>' : ''}</div></div>`;
@@ -132,12 +132,23 @@ async function copy(format) {
   const value = format === 'env' ? `${envName(entry)}=${JSON.stringify(entry.secret)}` : format === 'json' ? JSON.stringify({ [envName(entry)]: entry.secret }, null, 2) : entry.secret;
   try { await api.copy(value); showToast(format === 'plain' ? 'Key copied. Clipboard clears in 30 seconds.' : `Copied as ${format.toUpperCase()}`); } catch (e) { showToast(e.message); }
 }
+let rippleScreen = null;
+let rippleModalOpen = false;
+function clearClickRipples() { document.querySelectorAll('.click-ripple').forEach(layer => layer.remove()); }
+function updateRippleScreen(screen) {
+  if (screen === rippleScreen) return;
+  clearClickRipples();
+  rippleScreen = screen;
+}
 function render() {
-  if (!state.status?.unlocked) { renderAuth(); return; }
+  if (!state.status?.unlocked) { updateRippleScreen('auth'); rippleModalOpen = false; renderAuth(); return; }
+  updateRippleScreen('main');
+  if (rippleModalOpen && !state.modal) clearClickRipples();
+  rippleModalOpen = Boolean(state.modal);
   const scroll = { sidebar: document.querySelector('.sidebar')?.scrollTop || 0, list: document.querySelector('.entry-list')?.scrollTop || 0, detail: document.querySelector('.detail')?.scrollTop || 0 };
   const current = filtered();
   if (!current.some(x => x.id === state.selected)) state.selected = current[0]?.id || null;
-  app.innerHTML = `<div class="shell"><header class="top">${brand()}<label class="search">${fa('magnifying-glass')}<input id="search" type="search" placeholder="Search apps, keys, accounts, tags…" value="${esc(state.search)}" autocomplete="off" aria-label="Search apps, keys, accounts, and tags"></label><div class="top-right">${themeButton()}<button class="iconbtn" id="lock" title="Lock vault" aria-label="Lock vault">${fa('lock')}</button><button class="iconbtn settings-trigger ${state.view === 'settings' ? 'active' : ''}" id="open-settings" type="button" title="Settings" aria-label="Settings" aria-pressed="${state.view === 'settings'}">${fa('gear')}</button></div></header>${sidebar()}${state.view === 'settings' ? settingsPane() : listPane() + detailPane()}</div>${state.modal === 'platform' ? platformModalMarkup() : state.modal === 'expiry' ? expiryModalMarkup() : state.modal ? editorMarkup() : ''}`;
+  app.innerHTML = `<div class="shell"><header class="top">${brand()}<label class="search">${fa('magnifying-glass')}<input id="search" type="search" value="${esc(state.search)}" autocomplete="off" aria-label="Search apps, keys, accounts, and tags"></label><div class="top-right">${themeButton()}<button class="iconbtn" id="lock" title="Lock vault" aria-label="Lock vault">${fa('lock')}</button><button class="iconbtn settings-trigger ${state.view === 'settings' ? 'active' : ''}" id="open-settings" type="button" title="Settings" aria-label="Settings" aria-pressed="${state.view === 'settings'}">${fa('gear')}</button></div></header>${sidebar()}${state.view === 'settings' ? settingsPane() : listPane() + detailPane()}</div>${state.modal === 'platform' ? platformModalMarkup() : state.modal === 'expiry' ? expiryModalMarkup() : state.modal ? editorMarkup() : ''}`;
   document.querySelector('.sidebar').scrollTop = scroll.sidebar;
   if (document.querySelector('.entry-list')) document.querySelector('.entry-list').scrollTop = scroll.list;
   if (document.querySelector('.detail')) document.querySelector('.detail').scrollTop = scroll.detail;
@@ -151,20 +162,20 @@ function editorMarkup() {
   const defaultLabel = editing ? entry.label || '' : entry.platform ? `${entry.platform} API key` : 'New API key';
   const option = name => `<option value="${esc(name)}" ${entry.platform === name ? 'selected' : ''}>${esc(name)}</option>`;
   return `<div class="modal-backdrop" id="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><h2 id="modal-title">${editing ? 'Edit key' : custom ? 'Add a custom platform key' : 'Add a key'}</h2><p>Keep the details you need, right where you need them.</p></div><button class="iconbtn" id="close-modal" type="button" aria-label="Close">✕</button></div><form id="key-form">
-    <div class="formgrid"><div class="span2">${custom ? `<label class="formlabel" for="platform-name">Platform name *</label><input class="textinput" id="platform-name" maxlength="80" required placeholder="e.g. My internal service" value="${esc(entry.platform || '')}">` : `<label class="formlabel" for="platform">Platform *</label><span class="select-wrap"><select class="select" id="platform" required><option value="" disabled ${entry.platform ? '' : 'selected'}>Choose a platform</option>${allPlatformNames().map(option).join('')}</select></span>`}</div>
-    <div class="span2"><label class="formlabel" for="label">Key name *</label><input class="textinput" id="label" maxlength="120" required placeholder="e.g. Production API key" value="${esc(defaultLabel)}" ${editing ? '' : 'data-auto-name="true"'}></div>
-    <div class="span2"><label class="formlabel" for="secret">Secret key *</label><input class="textinput" id="secret" type="password" required value="${esc(entry.secret || '')}" placeholder="Paste your key" autocomplete="off"></div></div>
+    <div class="formgrid"><div class="span2">${custom ? `<label class="formlabel" for="platform-name">Platform name *</label><input class="textinput" id="platform-name" maxlength="80" required value="${esc(entry.platform || '')}">` : `<label class="formlabel" for="platform">Platform *</label><span class="select-wrap"><select class="select" id="platform" required><option value="" disabled ${entry.platform ? '' : 'selected'}></option>${allPlatformNames().map(option).join('')}</select></span>`}</div>
+    <div class="span2"><label class="formlabel" for="label">Key name *</label><input class="textinput" id="label" maxlength="120" required value="${esc(defaultLabel)}" ${editing ? '' : 'data-auto-name="true"'}></div>
+    <div class="span2"><label class="formlabel" for="secret">Secret key *</label><input class="textinput" id="secret" type="password" required value="${esc(entry.secret || '')}" autocomplete="off"></div></div>
     <details class="optional-fields" ${editing ? 'open' : ''}><summary>More details <span>Key ID, account, expiration, tags, notes</span></summary><div class="formgrid">
-    <div><label class="formlabel" for="key-id">Key ID</label><input class="textinput" id="key-id" value="${esc(entry.keyId || '')}" placeholder="Optional"></div>
-    <div><label class="formlabel" for="email">Email / Account</label><input class="textinput" id="email" value="${esc(entry.email || '')}" placeholder="Optional"></div>
-    <div><label class="formlabel" for="env-name">Environment variable</label><input class="textinput" id="env-name" value="${esc(editing ? entry.envName || '' : defaultEnvName(entry.platform))}" placeholder="e.g. OPENAI_KEY" ${editing ? '' : 'data-auto-env="true"'}></div>
+    <div><label class="formlabel" for="key-id">Key ID</label><input class="textinput" id="key-id" value="${esc(entry.keyId || '')}"></div>
+    <div><label class="formlabel" for="email">Email / Account</label><input class="textinput" id="email" value="${esc(entry.email || '')}"></div>
+    <div><label class="formlabel" for="env-name">Environment variable</label><input class="textinput" id="env-name" value="${esc(editing ? entry.envName || '' : defaultEnvName(entry.platform))}" ${editing ? '' : 'data-auto-env="true"'}></div>
     <div><label class="formlabel" for="expires">Expiration date</label><input class="textinput" id="expires" type="date" value="${esc(entry.expiresAt || '')}"></div>
-    <div class="span2"><label class="formlabel" for="tags">Tags</label><input class="textinput" id="tags" value="${esc((entry.tags || []).join(', '))}" placeholder="e.g. China, production, DNS (comma separated)"></div>
-    <div class="span2"><label class="formlabel" for="note">Notes</label><textarea class="textarea" id="note" placeholder="Optional notes">${esc(entry.note || '')}</textarea></div></div></details>
+    <div class="span2"><label class="formlabel" for="tags">Tags</label><input class="textinput" id="tags" value="${esc((entry.tags || []).join(', '))}"></div>
+    <div class="span2"><label class="formlabel" for="note">Notes</label><textarea class="textarea" id="note">${esc(entry.note || '')}</textarea></div></div></details>
     <div class="modal-actions">${editing ? '<button class="danger" type="button" id="delete">Delete key</button>' : '<span></span>'}<div class="modal-right"><button class="outlined" type="button" id="cancel">Cancel</button><button class="primary" type="submit">Save key</button></div></div><div id="form-error" class="error" role="alert"></div></form></div></div>`;
 }
 function platformModalMarkup() {
-  return `<div class="modal-backdrop" id="backdrop"><div class="modal platform-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><h2 id="modal-title">Add a platform</h2><p>It will appear under Other, ready for keys whenever you need it.</p></div><button class="iconbtn" id="close-modal" type="button" aria-label="Close">✕</button></div><form id="platform-form"><label class="formlabel" for="platform-name">Platform name</label><input class="textinput" id="platform-name" maxlength="80" required placeholder="e.g. My internal service" autocomplete="off"><div class="modal-actions"><span></span><div class="modal-right"><button class="outlined" type="button" id="cancel">Cancel</button><button class="primary" type="submit">Add platform</button></div></div><div id="form-error" class="error" role="alert"></div></form></div></div>`;
+  return `<div class="modal-backdrop" id="backdrop"><div class="modal platform-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><h2 id="modal-title">Add a platform</h2><p>It will appear under Other, ready for keys whenever you need it.</p></div><button class="iconbtn" id="close-modal" type="button" aria-label="Close">✕</button></div><form id="platform-form"><label class="formlabel" for="platform-name">Platform name</label><input class="textinput" id="platform-name" maxlength="80" required autocomplete="off"><div class="modal-actions"><span></span><div class="modal-right"><button class="outlined" type="button" id="cancel">Cancel</button><button class="primary" type="submit">Add platform</button></div></div><div id="form-error" class="error" role="alert"></div></form></div></div>`;
 }
 function expiryModalMarkup() {
   const entry = selected();
@@ -247,7 +258,45 @@ document.addEventListener('keydown', event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.getElementById('search')?.focus(); }
   if (event.key === 'Escape' && state.modal) closeModal();
 });
+function showClickRipple(target, clientX, clientY) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const control = target.closest('button, summary, .auth-choice');
+  if (!control || control.matches(':disabled')) return;
+  const rect = control.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const radius = Math.hypot(Math.max(x, rect.width - x), Math.max(y, rect.height - y));
+  const layer = document.createElement('span');
+  const circle = document.createElement('span');
+  layer.className = 'click-ripple';
+  circle.className = 'click-ripple-circle';
+  layer.style.left = `${rect.left}px`;
+  layer.style.top = `${rect.top}px`;
+  layer.style.width = `${rect.width}px`;
+  layer.style.height = `${rect.height}px`;
+  layer.style.borderRadius = getComputedStyle(control).borderRadius;
+  circle.style.left = `${x}px`;
+  circle.style.top = `${y}px`;
+  circle.style.width = circle.style.height = `${radius * 2}px`;
+  layer.append(circle);
+  document.body.append(layer);
+  const removeLayer = () => layer.remove();
+  circle.addEventListener('animationend', removeLayer, { once: true });
+  circle.addEventListener('animationcancel', removeLayer, { once: true });
+}
+document.addEventListener('pointerdown', event => {
+  if (event.button === 0) showClickRipple(event.target, event.clientX, event.clientY);
+}, { passive: true, capture: true });
+document.addEventListener('click', event => {
+  if (event.detail !== 0) return;
+  const control = event.target.closest('button, summary, .auth-choice');
+  if (!control) return;
+  const rect = control.getBoundingClientRect();
+  showClickRipple(control, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}, { capture: true });
 document.addEventListener('pointerdown', () => { state.lastActive = Date.now(); }, { passive: true });
+window.addEventListener('pagehide', clearClickRipples);
 setInterval(async () => { if (state.status?.unlocked && Date.now() - state.lastActive > 15 * 60 * 1000) { await api.lock(); clearVaultState(); } }, 30000);
 api.onLocked?.(() => { if (state.status) clearVaultState(); });
 themeQuery.addEventListener('change', () => { if (themePreference === 'system') { applyTheme(); updateThemeButton(); } });
